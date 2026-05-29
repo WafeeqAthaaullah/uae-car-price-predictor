@@ -2,6 +2,7 @@
 
 ### Repository Structure 
 
+```text
 UAE-CAR-PRICE-PREDICTOR/
 │
 ├── app/                        # Frontend UI and Backend API
@@ -10,7 +11,7 @@ UAE-CAR-PRICE-PREDICTOR/
 │   ├── script.js               # (Member 5) Handles API calls to Flask and dynamic DOM updates.
 │   └── style.css               # (Member 5) Styling for the web application.
 │
-├── data/                       # Datasets, Member 1 must save cleaned dataset here which everyone must use to train/test the models. 
+├── data/                       # Datasets, Member 1 must save cleaned dataset here which everyone must use to train/test their models 
 │   └── DriveArabia_All_uae_updated.csv # The raw dataset.
 │
 │
@@ -25,7 +26,8 @@ UAE-CAR-PRICE-PREDICTOR/
 │   ├── 04_svr_ridge.ipynb                            # (Member 4) SVR and Ridge Regression models for regularisation comparison.
 │   └── 05_neural_network.ipynb                       # (Member 5) Deep Learning (MLP) Neural Network built with Keras.
 │
+├── .mypy_cache/                # Python type-checking cache (Local generation, ignore in commits)
 ├── README.md                   # This documentation file.
 └── requirements.txt            # Project dependencies (pandas, scikit-learn, xgboost, flask, etc.)
-
+```
 
