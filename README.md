@@ -11,8 +11,9 @@ UAE-CAR-PRICE-PREDICTOR/
 │   ├── script.js               # (Member 5) Handles API calls to Flask and dynamic DOM updates.
 │   └── style.css               # (Member 5) Styling for the web application.
 │
-├── data/                       # Datasets, Member 1 must save cleaned dataset here which everyone must use to train/test their models 
-│   └── DriveArabia_All_uae_updated.csv # The raw dataset.
+├── data/                       # Datasets, USE 'uae_cars_cleaned.csv' TO TRAIN/TEST YOUR MODELS!!
+│   └── uae_used_cars_10k.csv # The raw dataset.
+│   └── uae_cars_cleaned.csv # The cleaned dataset.
 │
 │
 ├── models/                     # Saved Model Files
