@@ -23,12 +23,13 @@ Sample request:
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
+import pandas as pd
 from typing import Any
 
 app = Flask(__name__)
 
-model: Any = joblib.load("xgboost_model.pkl")
-FEATURE_COLS: list[str] = joblib.load("feature_columns.pkl")
+model: Any = joblib.load("models/xgboost_model.pkl")
+FEATURE_COLS: list[str] = joblib.load("models/feature_columns.pkl")
 
 # ---------------------------------------------------------------------------
 # Lookup maps — new column prefixes from dubizzle_cleaned.csv
@@ -125,6 +126,12 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
     row["km_per_year"]     = row["kilometers"] / max(row["age"], 1)
 
     # Company / make (OHE prefix: company_)
+    trim_key = f"motors_trim_{data.get('motors_trim', 'Unknown').strip()}"
+    if trim_key in row:
+        row[trim_key] = 1
+    elif "motors_trim_Unknown" in row:
+        row["motors_trim_Unknown"] = 1
+        
     make_key = f"company_{data.get('make', '').lower().strip().replace(' ', '-')}"
     if make_key in row:
         row[make_key] = 1
@@ -203,10 +210,49 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
 # Routes
 # ---------------------------------------------------------------------------
 
+from flask import render_template 
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
 @app.route("/health", methods=["GET"])
 def health() -> tuple:
     return jsonify({"status": "ok", "model": "xgboost_dubizzle_cars"}), 200
 
+
+df = pd.read_csv('ui_car_tree_data.csv')
+
+# Build a nested dictionary: {Make: {Model: [Trims]}}
+CAR_TREE = {}
+for make, make_df in df.groupby('company'):
+    make_clean = str(make).title()
+    CAR_TREE[make_clean] = {}
+    
+    for model, model_df in make_df.groupby('model'):
+        model_clean = str(model).title()
+        # Grab all unique trims for this specific make and model
+        trims = [str(t).upper() for t in model_df['motors_trim'].unique() if str(t).lower() != 'nan']
+        if not trims: 
+            trims = ["UNKNOWN"]
+        
+        CAR_TREE[make_clean][model_clean] = trims
+
+
+@app.route("/options", methods=["GET"])
+def get_options() -> tuple:
+    """Sends the hierarchical Car Tree and the standard options to the UI."""
+    options = {
+        "car_tree": CAR_TREE, # <-- Sending the nested dictionary!
+        "emirates": [k.title() for k in EMIRATE_MAP.keys()],
+        "body_types": [k.title() for k in BODY_TYPE_MAP.keys()],
+        "fuel_types": [k.title() for k in FUEL_MAP.keys()],
+        "colors": [k.title() for k in COLOR_MAP.keys()],
+        "regional_specs": [k.title() for k in REGIONAL_SPECS_MAP.keys()],
+        "body_conditions": [k.capitalize() for k in BODY_CONDITION_MAP.keys()],
+        "mechanical_conditions": [k.capitalize() for k in MECHANICAL_CONDITION_MAP.keys()]
+    }
+    return jsonify(options), 200
 
 @app.route("/predict", methods=["POST"])
 def predict() -> tuple:

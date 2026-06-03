@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dubizzle AI Price Predictor</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg custom-card">
+                <div class="card-header text-white text-center py-4 gradient-header">
+                    <h2 class="fw-bold mb-0">🚗 AI Car Price Predictor</h2>
+                    <p class="mb-0 text-light">Powered by XGBoost</p>
+                </div>
+                <div class="card-body p-5">
+                    
+                    <form id="predictionForm">
+                        
+                        <h5 class="section-title fw-bold text-primary">Core Details</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Make</label>
+                                <select class="form-select searchable-dropdown" id="make" required></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Model</label>
+                                <select class="form-select searchable-dropdown" id="model" required></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Trim</label>
+                                <select class="form-select searchable-dropdown" id="motors_trim" required></select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Year</label>
+                                <input type="number" class="form-control" id="year" value="2020" min="1990" max="2025" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Kilometers</label>
+                                <input type="number" class="form-control" id="mileage" value="65000" min="0" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Emirate</label>
+                                <select class="form-select standard-dropdown" id="city" required></select>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title fw-bold text-primary mt-4">Technical Specs</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Body Type</label>
+                                <select class="form-select standard-dropdown" id="body_type"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Regional Specs</label>
+                                <select class="form-select standard-dropdown" id="regional_specs"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Cylinders</label>
+                                <input type="number" class="form-control" id="cylinders" value="8" min="2" max="16">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Horsepower</label>
+                                <input type="number" class="form-control" id="horsepower" value="400" min="50" max="1500">
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Transmission</label>
+                                <select class="form-select" id="transmission">
+                                    <option value="Automatic">Automatic</option>
+                                    <option value="Manual">Manual</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Fuel Type</label>
+                                <select class="form-select standard-dropdown" id="fuel_type"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Color</label>
+                                <select class="form-select standard-dropdown" id="color"></select>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title fw-bold text-primary mt-4">Vehicle Condition</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Seller Type</label>
+                                <select class="form-select" id="seller_type">
+                                    <option value="Owner">Private Owner</option>
+                                    <option value="Dealership">Dealership / Certified</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Body Condition</label>
+                                <select class="form-select standard-dropdown" id="body_condition"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Mechanical Condition</label>
+                                <select class="form-select standard-dropdown" id="mechanical_condition"></select>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold shadow" id="submitBtn">
+                                Calculate Estimated Value
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="resultBox" class="alert alert-success mt-4 text-center shadow-sm" style="display: none; border: 2px solid #198754;">
+                        <p class="text-muted mb-1 text-uppercase fw-bold">Estimated Market Value</p>
+                        <h1 id="priceDisplay" class="display-3 fw-bold text-success mb-0"></h1>
+                    </div>
+                    <div id="errorBox" class="alert alert-danger mt-4 fw-bold" style="display: none;"></div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
