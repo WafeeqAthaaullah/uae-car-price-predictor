@@ -25,10 +25,11 @@ import joblib
 import numpy as np
 import pandas as pd
 from typing import Any
+from datetime import datetime
 
 app = Flask(__name__)
 
-model: Any = joblib.load("models/xgboost_model.pkl")
+XGB_MODEL = joblib.load("models/xgboost_model.pkl")
 FEATURE_COLS: list[str] = joblib.load("models/feature_columns.pkl")
 
 # ---------------------------------------------------------------------------
@@ -40,11 +41,9 @@ EMIRATE_MAP: dict[str, str] = {
     "dubai":          "emirate_Dubai",
     "sharjah":        "emirate_Sharjah",
     "ajman":          "emirate_Ajman",
-    "al ain":         "emirate_Al Ain",
     "ras al khaimah": "emirate_Ras Al Khaimah",
-    "fujeirah":       "emirate_Fujeirah",
-    "fujairah":       "emirate_Fujeirah",
-    "umm al qawain":  "emirate_Umm Al Qawain",
+    "fujairah":       "emirate_Fujairah",
+    "umm al quwain":  "emirate_Umm Al Quwain",
 }
 
 BODY_TYPE_MAP: dict[str, str] = {
@@ -65,7 +64,6 @@ BODY_TYPE_MAP: dict[str, str] = {
 
 FUEL_MAP: dict[str, str] = {
     "gasoline": "fuel_type_Gasoline",
-    "petrol":   "fuel_type_Gasoline",
     "electric": "fuel_type_Electric",
     "hybrid":   "fuel_type_Hybrid",
 }
@@ -81,7 +79,6 @@ COLOR_MAP: dict[str, str] = {
 
 REGIONAL_SPECS_MAP: dict[str, str] = {
     "gcc specs":            "regional_specs_GCC Specs",
-    "gcc":                  "regional_specs_GCC Specs",
     "north american specs": "regional_specs_North American Specs",
     "american specs":       "regional_specs_North American Specs",
     "japanese specs":       "regional_specs_Japanese Specs",
@@ -117,13 +114,14 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
     row = dict.fromkeys(feature_cols, 0)
 
     # Numeric fields
-    year = int(data.get("year", 2020))
+    year = int(safe_number(data.get("year"), 2020))
     row["year"]            = year
-    row["kilometers"]      = int(data.get("mileage", 50000))
-    row["no_of_cylinders"] = float(data.get("cylinders", 4))
-    row["horsepower"]      = float(data.get("horsepower", 200))
-    row["age"]             = 2026 - year
-    row["km_per_year"]     = row["kilometers"] / max(row["age"], 1)
+    row["kilometers"]      = int(safe_number(data.get("mileage"), 100000))
+    row["no_of_cylinders"] = safe_number(data.get("cylinders"), 4.0) # Default to V6
+    row["horsepower"]      = safe_number(data.get("horsepower"), 150.0) # Default to 200hp
+    current_year = datetime.now().year
+    row["age"] = current_year - year
+    row["km_per_year"] = row["kilometers"] / max(row["age"], 1)
 
     # Company / make (OHE prefix: company_)
     trim_key = f"motors_trim_{data.get('motors_trim', 'Unknown').strip()}"
@@ -205,6 +203,15 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
 
     return [row[col] for col in feature_cols]
 
+def safe_number(value, default_value):
+    """Safely converts input to a float, returning a default if it's blank or invalid."""
+    try:
+        # If the value is completely empty string or None, this triggers the except block
+        if value is None or str(value).strip() == "":
+            return float(default_value)
+        return float(value)
+    except (ValueError, TypeError):
+        return float(default_value)
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -243,14 +250,16 @@ for make, make_df in df.groupby('company'):
 def get_options() -> tuple:
     """Sends the hierarchical Car Tree and the standard options to the UI."""
     options = {
-        "car_tree": CAR_TREE, # <-- Sending the nested dictionary!
-        "emirates": [k.title() for k in EMIRATE_MAP.keys()],
-        "body_types": [k.title() for k in BODY_TYPE_MAP.keys()],
-        "fuel_types": [k.title() for k in FUEL_MAP.keys()],
-        "colors": [k.title() for k in COLOR_MAP.keys()],
-        "regional_specs": [k.title() for k in REGIONAL_SPECS_MAP.keys()],
-        "body_conditions": [k.capitalize() for k in BODY_CONDITION_MAP.keys()],
-        "mechanical_conditions": [k.capitalize() for k in MECHANICAL_CONDITION_MAP.keys()]
+        "car_tree": CAR_TREE, 
+        
+        "emirates": ["Dubai", "Abu Dhabi", "Sharjah", "Ajman", "Ras Al Khaimah", "Fujairah", "Umm Al Quwain"],
+        "fuel_types": ["Gasoline", "Hybrid", "Electric"],
+        "regional_specs": ["GCC Specs", "North American Specs", "Japanese Specs", "Other"],
+        "body_conditions": ["Perfect inside and out", "No accidents, very few faults", "Normal wear & tear, a few issues"],
+        "mechanical_conditions": ["Perfect inside and out", "Minor faults, all fixed", "Major faults, all fixed", "Ongoing minor & major faults"],
+        
+        "body_types": sorted(list(set([v.replace("body_type_", "") for v in BODY_TYPE_MAP.values()]))),
+        "colors": sorted(list(set([v.replace("color_", "") for v in COLOR_MAP.values()])))
     }
     return jsonify(options), 200
 
@@ -273,7 +282,7 @@ def predict() -> tuple:
 
     try:
         features = build_feature_vector(data, FEATURE_COLS)
-        prediction = model.predict([features])[0]
+        prediction = XGB_MODEL.predict([features])[0]
         return jsonify({
             "predicted_price_aed": round(float(prediction), 0),
             "input_received": {k: data[k] for k in required}
