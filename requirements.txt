@@ -9,3 +9,4 @@ tensorflow
 keras
 flask
 joblib
+gunicorn
