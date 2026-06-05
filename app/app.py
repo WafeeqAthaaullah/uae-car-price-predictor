@@ -1,26 +1,9 @@
 """
 Flask REST API — UAE Car Price Predictor (Dubizzle Dataset)
-Endpoint: POST /predict
-Model:    XGBoost (xgboost_model.pkl)
-
-Run:
-    flask run --port 5000
-    # or
-    python app.py
-
-Sample request:
-    curl -X POST http://localhost:5000/predict \
-         -H "Content-Type: application/json" \
-         -d '{"make":"toyota","model":"land-cruiser","year":2020,
-              "mileage":65000,"city":"Dubai","transmission":"Automatic",
-              "fuel_type":"Gasoline","body_type":"SUV","cylinders":8,
-              "horsepower":400,"regional_specs":"GCC Specs",
-              "color":"White","seller_type":"Owner",
-              "body_condition":"Perfect inside and out",
-              "mechanical_condition":"Perfect inside and out"}'
 """
 
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, render_template
 import joblib
 import numpy as np
 import pandas as pd
@@ -29,8 +12,24 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-XGB_MODEL = joblib.load("models/xgboost_model.pkl")
-FEATURE_COLS: list[str] = joblib.load("models/feature_columns.pkl")
+# ---------------------------------------------------------------------------
+# Path Configuration & Model Loading
+# ---------------------------------------------------------------------------
+# This grabs the absolute path of the 'app' folder where this file sits
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 1. Load XGBoost (Default)
+XGB_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'xgboost', 'xgboost_model.pkl'))
+XGB_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'xgboost', 'feature_columns.pkl'))
+
+# 2. Load Linear Regression (Baseline)
+LR_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'linear regression', 'lr_model.pkl'))
+LR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'linear regression', 'lr_columns.pkl'))
+
+# 3. Load Random Forest
+RF_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', 'rf_model.pkl'))
+RF_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', 'rf_columns.pkl'))
+
 
 # ---------------------------------------------------------------------------
 # Lookup maps — new column prefixes from dubizzle_cleaned.csv
@@ -106,10 +105,20 @@ MECHANICAL_CONDITION_MAP: dict[str, str] = {
 }
 
 
+def safe_number(value, default_value):
+    """Safely converts input to a float, returning a default if it's blank or invalid."""
+    try:
+        if value is None or str(value).strip() == "":
+            return float(default_value)
+        return float(value)
+    except (ValueError, TypeError):
+        return float(default_value)
+
+
 def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
     """
-    Convert raw API payload to feature vector aligned with dubizzle_cleaned.csv columns.
-    Unknown categories degrade gracefully to 0 (reference/other category).
+    Convert raw API payload to feature vector aligned with the exact columns 
+    expected by the chosen model.
     """
     row = dict.fromkeys(feature_cols, 0)
 
@@ -117,13 +126,15 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
     year = int(safe_number(data.get("year"), 2020))
     row["year"]            = year
     row["kilometers"]      = int(safe_number(data.get("mileage"), 100000))
-    row["no_of_cylinders"] = safe_number(data.get("cylinders"), 4.0) # Default to V6
-    row["horsepower"]      = safe_number(data.get("horsepower"), 150.0) # Default to 200hp
+    row["no_of_cylinders"] = safe_number(data.get("cylinders"), 4.0) 
+    row["horsepower"]      = safe_number(data.get("horsepower"), 150.0) 
+    
+    # Dynamic Age Calculation
     current_year = datetime.now().year
     row["age"] = current_year - year
     row["km_per_year"] = row["kilometers"] / max(row["age"], 1)
 
-    # Company / make (OHE prefix: company_)
+    # Company / make
     trim_key = f"motors_trim_{data.get('motors_trim', 'Unknown').strip()}"
     if trim_key in row:
         row[trim_key] = 1
@@ -134,22 +145,25 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
     if make_key in row:
         row[make_key] = 1
     else:
-        row["company_other-make"] = 1
+        if "company_other-make" in row:
+            row["company_other-make"] = 1
 
-    # Model (OHE prefix: model_)
+    # Model
     model_key = f"model_{data.get('model', '').lower().strip().replace(' ', '-')}"
     if model_key in row:
         row[model_key] = 1
     else:
-        row["model_other"] = 1
+        if "model_other" in row:
+            row["model_other"] = 1
 
-    # Emirate / city (OHE prefix: emirate_)
+    # Emirate / city
     city_norm = data.get("city", "").lower().strip()
     emirate_col = EMIRATE_MAP.get(city_norm)
     if emirate_col and emirate_col in row:
         row[emirate_col] = 1
     else:
-        row["emirate_Dubai"] = 1
+        if "emirate_Dubai" in row:
+            row["emirate_Dubai"] = 1
 
     # Transmission
     if data.get("transmission", "").lower() == "manual":
@@ -203,21 +217,10 @@ def build_feature_vector(data: dict, feature_cols: list[str]) -> list[float]:
 
     return [row[col] for col in feature_cols]
 
-def safe_number(value, default_value):
-    """Safely converts input to a float, returning a default if it's blank or invalid."""
-    try:
-        # If the value is completely empty string or None, this triggers the except block
-        if value is None or str(value).strip() == "":
-            return float(default_value)
-        return float(value)
-    except (ValueError, TypeError):
-        return float(default_value)
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
-
-from flask import render_template 
 
 @app.route("/", methods=["GET"])
 def home():
@@ -225,10 +228,11 @@ def home():
 
 @app.route("/health", methods=["GET"])
 def health() -> tuple:
-    return jsonify({"status": "ok", "model": "xgboost_dubizzle_cars"}), 200
+    return jsonify({"status": "ok", "app": "live"}), 200
 
-
-df = pd.read_csv('ui_car_tree_data.csv')
+# Safely load the CSV from the data folder
+CSV_PATH = os.path.join(BASE_DIR, '..', 'data', 'ui_car_tree_data.csv')
+df = pd.read_csv(CSV_PATH)
 
 # Build a nested dictionary: {Make: {Model: [Trims]}}
 CAR_TREE = {}
@@ -238,7 +242,6 @@ for make, make_df in df.groupby('company'):
     
     for model, model_df in make_df.groupby('model'):
         model_clean = str(model).title()
-        # Grab all unique trims for this specific make and model
         trims = [str(t).upper() for t in model_df['motors_trim'].unique() if str(t).lower() != 'nan']
         if not trims: 
             trims = ["UNKNOWN"]
@@ -265,12 +268,6 @@ def get_options() -> tuple:
 
 @app.route("/predict", methods=["POST"])
 def predict() -> tuple:
-    """
-    Required: make, model, year, mileage, city, transmission, fuel_type
-    Optional: body_type, cylinders, horsepower, color, regional_specs,
-              seller_type, body_condition, mechanical_condition
-    Returns:  {"predicted_price_aed": 185000.0}
-    """
     data = request.get_json(force=True, silent=True)
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
@@ -281,19 +278,32 @@ def predict() -> tuple:
         return jsonify({"error": f"Missing required fields: {missing}"}), 400
 
     try:
-        features = build_feature_vector(data, FEATURE_COLS)
-        prediction = XGB_MODEL.predict([features])[0]
+        # Check which model the user requested from the frontend dropdown
+        chosen_model = data.get("model_choice", "xgboost")
+        
+        # Route 1: Linear Regression
+        if chosen_model == "linear_regression":
+            features = build_feature_vector(data, LR_COLS)
+            prediction = LR_MODEL.predict([features])[0]
+            
+        # Route 2: Random Forest
+        elif chosen_model == "random_forest":
+            features = build_feature_vector(data, RF_COLS)
+            prediction = RF_MODEL.predict([features])[0]
+            
+        # Route 3: XGBoost (The Default)
+        else:
+            features = build_feature_vector(data, XGB_COLS)
+            prediction = XGB_MODEL.predict([features])[0]
+
         return jsonify({
             "predicted_price_aed": round(float(prediction), 0),
+            "model_used": chosen_model,
             "input_received": {k: data[k] for k in required}
         }), 200
+        
     except Exception as exc:
         return jsonify({"error": f"Prediction failed: {str(exc)}"}), 500
-
-
-@app.route("/features", methods=["GET"])
-def features() -> tuple:
-    return jsonify({"n_features": len(FEATURE_COLS), "feature_columns": FEATURE_COLS}), 200
 
 
 if __name__ == "__main__":

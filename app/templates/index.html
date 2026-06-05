@@ -113,6 +113,20 @@
                             </div>
                         </div>
 
+                        <h5 class="section-title fw-bold text-primary mt-4">System Settings</h5>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="model_choice" class="form-label fw-bold">Machine Learning Engine</label>
+                                <select class="form-select" id="model_choice" name="model_choice">
+                                    <option value="xgboost" selected>XGBoost (High Accuracy - Default)</option>
+                                    <option value="random_forest">Random Forest (Baseline)</option>
+                                    <option value="linear_regression">Linear Regression (Fast)</option>
+                                </select>
+                                <div class="form-text">Select which AI model handles your prediction.</div>
+                            </div>
+                        </div>
+
                         <div class="d-grid mt-5">
                             <button type="submit" class="btn btn-primary btn-lg fw-bold shadow" id="submitBtn">
                                 Calculate Estimated Value

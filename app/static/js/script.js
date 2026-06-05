@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function() {
             new Choices('#color', { choices: formatChoices(data.colors), searchEnabled: true, itemSelectText: '' });
             new Choices('#body_condition', { choices: formatChoices(data.body_conditions), searchEnabled: false, itemSelectText: '' });
             new Choices('#mechanical_condition', { choices: formatChoices(data.mechanical_conditions), searchEnabled: false, itemSelectText: '' });
+            new Choices('#model_choice', { searchEnabled: false, itemSelectText: '' });
             
         })
         .catch(error => console.error("Error loading options:", error));
@@ -75,6 +76,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Gather Payload
         const payload = {
+            model_choice: document.getElementById('model_choice').value,
             make: document.getElementById('make').value,
             model: document.getElementById('model').value,
             motors_trim: document.getElementById('motors_trim').value,
@@ -83,8 +85,8 @@ document.addEventListener("DOMContentLoaded", function() {
             city: document.getElementById('city').value,
             body_type: document.getElementById('body_type').value,
             regional_specs: document.getElementById('regional_specs').value,
-            cylinders: parseFloat(document.getElementById('cylinders').value) || 6,
-            horsepower: parseFloat(document.getElementById('horsepower').value) || 200, // Safe fallback!
+            cylinders: parseFloat(document.getElementById('cylinders').value),
+            horsepower: parseFloat(document.getElementById('horsepower').value),
             transmission: document.getElementById('transmission').value,
             fuel_type: document.getElementById('fuel_type').value,
             color: document.getElementById('color').value,
