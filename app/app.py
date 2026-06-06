@@ -31,14 +31,14 @@ RF_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', '
 RF_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', 'rf_columns.pkl'))
 
 # 4. Load Ridge Regression & SVR
-RIDGE_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'ridge_model.pkl'))
-RIDGE_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'ridge_columns.pkl'))
+RIDGE_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'Ridge', 'ridge_model.pkl'))
+RIDGE_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'Ridge', 'ridge_columns.pkl'))
 
-SVR_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'svr', 'svr_model.pkl'))
-SVR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'svr', 'svr_columns.pkl'))
+SVR_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'SVR', 'svr_model.pkl'))
+SVR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'SVR', 'svr_columns.pkl'))
 
 # 5. Load the Scaler
-SCALER = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'scaler.pkl'))
+SCALER = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'Ridge', 'scaler.pkl'))
 # ---------------------------------------------------------------------------
 # Lookup maps — new column prefixes from dubizzle_cleaned.csv
 # ---------------------------------------------------------------------------
