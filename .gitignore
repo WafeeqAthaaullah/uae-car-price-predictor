@@ -1,3 +1,1 @@
 /.mypy_caches
-models/*.pkl
-models/*.json
