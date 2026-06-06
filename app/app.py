@@ -30,7 +30,15 @@ LR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'linear regression'
 RF_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', 'rf_model.pkl'))
 RF_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'random forest', 'rf_columns.pkl'))
 
+# 4. Load Ridge Regression & SVR
+RIDGE_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'ridge_model.pkl'))
+RIDGE_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'ridge_columns.pkl'))
 
+SVR_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'svr', 'svr_model.pkl'))
+SVR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'svr', 'svr_columns.pkl'))
+
+# 5. Load the Scaler
+SCALER = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'ridge', 'scaler.pkl'))
 # ---------------------------------------------------------------------------
 # Lookup maps — new column prefixes from dubizzle_cleaned.csv
 # ---------------------------------------------------------------------------
@@ -290,8 +298,26 @@ def predict() -> tuple:
         elif chosen_model == "random_forest":
             features = build_feature_vector(data, RF_COLS)
             prediction = RF_MODEL.predict([features])[0]
-            
-        # Route 3: XGBoost (The Default)
+
+        # Route 3: Ridge Regression
+        elif chosen_model == "ridge":
+            features = build_feature_vector(data, RIDGE_COLS)
+            # Scale the features before predicting!
+            features_scaled = SCALER.transform([features]) 
+            # Predict the log-price, then reverse it with expm1
+            prediction_log = RIDGE_MODEL.predict(features_scaled)[0]
+            prediction = np.expm1(prediction_log)
+
+        # Route 4: SVR
+        elif chosen_model == "svr":
+            features = build_feature_vector(data, SVR_COLS)
+            # Scale the features before predicting!
+            features_scaled = SCALER.transform([features])
+            # SVR was trained on raw prices, so no expm1 is needed
+            prediction = SVR_MODEL.predict(features_scaled)[0]
+            print(f"SUCCESS! SVR Calculated: {prediction}")
+               
+        # Route 5: XGBoost (The Default)
         else:
             features = build_feature_vector(data, XGB_COLS)
             prediction = XGB_MODEL.predict([features])[0]
