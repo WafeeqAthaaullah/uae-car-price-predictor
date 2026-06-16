@@ -9,13 +9,46 @@ import numpy as np
 import pandas as pd
 from typing import Any
 from datetime import datetime
+import torch
+import torch.nn as nn
 
 app = Flask(__name__)
 
 # ---------------------------------------------------------------------------
+# Neural Network Architecture
+# ---------------------------------------------------------------------------
+class MLP(nn.Module):
+    def __init__(self, n_features):
+        super().__init__()
+        def block(in_dim, out_dim, dropout):
+            return nn.Sequential(
+                nn.Linear(in_dim, out_dim),
+                nn.BatchNorm1d(out_dim),
+                nn.GELU(),
+                nn.Dropout(dropout)
+            )
+        self.network = nn.Sequential(
+            block(n_features, 1024, 0.40),
+            block(1024,        512, 0.35),
+            block( 512,        256, 0.25),
+            block( 256,        128, 0.20),
+            block( 128,         64, 0.15),
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.GELU(),
+            nn.Linear(32, 1)
+        )
+        for layer in self.modules():
+            if isinstance(layer, nn.Linear):
+                nn.init.kaiming_normal_(layer.weight)
+                nn.init.zeros_(layer.bias)
+
+    def forward(self, x):
+        return self.network(x)
+
+# ---------------------------------------------------------------------------
 # Path Configuration & Model Loading
 # ---------------------------------------------------------------------------
-# This grabs the absolute path of the 'app' folder where this file sits
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 1. Load XGBoost (Default)
@@ -37,7 +70,15 @@ RIDGE_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'Ridge', 'ridge_
 SVR_MODEL = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'SVR', 'svr_model.pkl'))
 SVR_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'SVR', 'svr_columns.pkl'))
 
-# 5. Load the Scaler
+# 6. Load Neural Network
+NN_CHECKPOINT = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'neural network', 'neural_network_model.pkl'))
+NN_MODEL = MLP(NN_CHECKPOINT['n_features'])
+NN_MODEL.load_state_dict(NN_CHECKPOINT['state_dict'])
+NN_MODEL.eval()
+NN_COLS = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'neural network', 'neural_network_columns.pkl'))
+NN_SCALER = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'neural network', 'neural_network_scaler.pkl'))
+
+# 7. Load the Scaler
 SCALER = joblib.load(os.path.join(BASE_DIR, '..', 'models', 'Ridge', 'scaler.pkl'))
 # ---------------------------------------------------------------------------
 # Lookup maps — new column prefixes from dubizzle_cleaned.csv
@@ -316,8 +357,17 @@ def predict() -> tuple:
             # SVR was trained on raw prices, so no expm1 is needed
             prediction = SVR_MODEL.predict(features_scaled)[0]
             print(f"SUCCESS! SVR Calculated: {prediction}")
-               
-        # Route 5: XGBoost (The Default)
+
+        # Route 5: Neural Network
+        elif chosen_model == "neural_network":
+            features = build_feature_vector(data, NN_COLS)
+            features_scaled = NN_SCALER.transform([features])
+            features_tensor = torch.FloatTensor(features_scaled)
+            with torch.no_grad():
+                log_prediction = NN_MODEL(features_tensor).item()
+            prediction = np.expm1(log_prediction)
+
+        # Route 6: XGBoost (The Default)
         else:
             features = build_feature_vector(data, XGB_COLS)
             prediction = XGB_MODEL.predict([features])[0]
