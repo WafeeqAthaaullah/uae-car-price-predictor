@@ -72,8 +72,6 @@ uae-car-price-predictor/
 │   │   │   └── 📄 style.css               # Web UI styling
 │   │   └── 📁 js/
 │   │       └── 📄 script.js               # Frontend logic & API calls
-│   ├── 📄 test.ipynb                      # API testing notebook
-│   ├── 📄 ui_car_tree_data.csv            # Hierarchical car make/model data
 │   └── 📁 models/                         # Saved trained models
 │       ├── xgboost_model.pkl              # Deployed XGBoost model
 │       └── feature_columns.pkl            # Feature column metadata
