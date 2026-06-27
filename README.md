@@ -308,12 +308,12 @@ curl -X POST http://localhost:5000/predict \
 
 | Model | RMSE | MAE | R² Score |
 |-------|------|-----|----------|
-| Linear Regression | - | - | - |
-| Random Forest | - | - | - |
-| **XGBoost** ⭐ | - | - | - |
-| Ridge Regression | - | - | - |
-| SVR | - | - | - |
-| Neural Network | - | - | - |
+| Linear Regression | 49,001.59 | 32,063.14 | 0.7538 |
+| Random Forest | 39,322.55 | 22,906.33 | 0.8415 |
+| **XGBoost** ⭐ | 29,388 | 17,566 | 0.905 |
+| Ridge Regression | 41,029 | 24,238 | 0.8257 |
+| SVR | 47,248 | 27,895 | 0.7689 |
+| Neural Network | 31,524 | 18,423 | 0.8981 |
 
 *Note: Specific metrics can be found in individual notebook files (01-05)*
 
